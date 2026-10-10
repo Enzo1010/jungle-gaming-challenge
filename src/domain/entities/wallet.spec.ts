@@ -103,7 +103,7 @@ describe('Wallet and WalletLedgerEntry', () => {
       expect(wallet.currency).toBe(currency);
     });
 
-    it('successfully debits money, returns ledger entry and increments version', () => {
+    it('successfully debits money, returns ledger entry and updates balance', () => {
       const wallet = Wallet.open({
         id: 'w-1',
         playerId: 'p-1',
@@ -115,7 +115,7 @@ describe('Wallet and WalletLedgerEntry', () => {
       const ledgerEntry = wallet.debit(moneyToDebit, 'tx-1');
 
       expect(wallet.balance.toJSON()).toEqual({ amount: '75.00', currency });
-      expect(wallet.version).toBe(2);
+      expect(wallet.version).toBe(1);
       expect(wallet.updatedAt.getTime()).toBeGreaterThanOrEqual(initialUpdatedAt.getTime());
 
       expect(ledgerEntry.direction).toBe(LedgerDirection.Debit);
@@ -125,7 +125,7 @@ describe('Wallet and WalletLedgerEntry', () => {
       expect(ledgerEntry.walletId).toBe('w-1');
     });
 
-    it('successfully credits money, returns ledger entry and increments version', () => {
+    it('successfully credits money, returns ledger entry and updates balance', () => {
       const wallet = Wallet.open({
         id: 'w-2',
         playerId: 'p-2',
@@ -136,7 +136,7 @@ describe('Wallet and WalletLedgerEntry', () => {
       const ledgerEntry = wallet.credit(moneyToCredit, 'tx-2');
 
       expect(wallet.balance.toJSON()).toEqual({ amount: '150.00', currency });
-      expect(wallet.version).toBe(2);
+      expect(wallet.version).toBe(1);
 
       expect(ledgerEntry.direction).toBe(LedgerDirection.Credit);
       expect(ledgerEntry.money.equals(moneyToCredit)).toBe(true);

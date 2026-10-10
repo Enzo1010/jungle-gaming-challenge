@@ -1,6 +1,6 @@
 import { Money } from '../value-objects/money.js';
 import { LedgerDirection } from './wallet-ledger-entry.js';
-import { InvalidTransactionStateError, MissingReferenceError } from '../errors/domain.error.js';
+import { InvalidMoneyAmountError, InvalidTransactionStateError, MissingReferenceError } from '../errors/domain.error.js';
 
 export enum WagerTransactionKind {
   Opening  = 'OPENING',
@@ -17,6 +17,22 @@ export enum WagerTransactionStatus {
   Processed        = 'PROCESSED',
   Rejected         = 'REJECTED',
   Failed           = 'FAILED',
+}
+
+/**
+ * Tipos que podem chegar por canais externos (HTTP/SQS).
+ * `OPENING` é interno (crédito de abertura da wallet) e nunca pode ser submetido.
+ */
+export const EXTERNALLY_SUBMITTABLE_KINDS: readonly WagerTransactionKind[] = [
+  WagerTransactionKind.Bet,
+  WagerTransactionKind.Win,
+  WagerTransactionKind.Loss,
+  WagerTransactionKind.Refund,
+  WagerTransactionKind.Rollback,
+];
+
+export function isExternallySubmittableKind(kind: unknown): kind is WagerTransactionKind {
+  return EXTERNALLY_SUBMITTABLE_KINDS.includes(kind as WagerTransactionKind);
 }
 
 export interface CreateWagerTransactionProps {
@@ -64,6 +80,10 @@ export class WagerTransaction {
   ) {}
 
   static create(props: CreateWagerTransactionProps): WagerTransaction {
+    if (!props.money.isPositive()) {
+      throw new InvalidMoneyAmountError(`Transaction amount must be greater than zero, got ${props.money.toString()}`);
+    }
+
     const isRefundOrRollback = props.kind === WagerTransactionKind.Refund || props.kind === WagerTransactionKind.Rollback;
     if (isRefundOrRollback && !props.referenceExternalTransactionId) {
       throw new MissingReferenceError(`Transaction of kind ${props.kind} requires a referenceExternalTransactionId`);

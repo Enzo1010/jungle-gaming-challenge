@@ -1,0 +1,85 @@
+### HEALTH CHECKS
+GET http://localhost:3000/health/live
+
+###
+GET http://localhost:3000/health/ready
+
+###
+# @name createWallet
+POST http://localhost:3000/wallets
+Content-Type: application/json
+
+{
+  "playerId": "player-123",
+  "initialBalance": {
+    "amount": "100.00",
+    "currency": "BRL"
+  }
+}
+
+### Extrair walletId
+@walletId = {{createWallet.response.body.id}}
+
+### Criar uma BET Normal Válida
+# @name submitBet
+POST http://localhost:3000/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: idemp-bet-001
+
+{
+  "providerId": "provider-abc",
+  "externalTransactionId": "ext-tx-100",
+  "playerId": "player-123",
+  "walletId": "{{walletId}}",
+  "roundId": "round-1",
+  "gameId": "game-1",
+  "kind": "BET",
+  "money": {
+    "amount": "10.50",
+    "currency": "BRL"
+  }
+}
+
+### Testar a Idempotência (Deve devolver o replay com o mesmo resultado e flag)
+POST http://localhost:3000/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: idemp-bet-001
+
+{
+  "providerId": "provider-abc",
+  "externalTransactionId": "ext-tx-100",
+  "playerId": "player-123",
+  "walletId": "{{walletId}}",
+  "roundId": "round-1",
+  "gameId": "game-1",
+  "kind": "BET",
+  "money": {
+    "amount": "10.50",
+    "currency": "BRL"
+  }
+}
+
+### Testar erro 422 - Saldo Insuficiente (BET maior que o saldo)
+POST http://localhost:3000/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: idemp-bet-002
+
+{
+  "providerId": "provider-abc",
+  "externalTransactionId": "ext-tx-101",
+  "playerId": "player-123",
+  "walletId": "{{walletId}}",
+  "roundId": "round-1",
+  "gameId": "game-1",
+  "kind": "BET",
+  "money": {
+    "amount": "999.00",
+    "currency": "BRL"
+  }
+}
+
+### Reconciliação (Comparar ledger com saldo gravado)
+POST http://localhost:3000/wallets/{{walletId}}/reconciliation
+Content-Type: application/json
+
+{}

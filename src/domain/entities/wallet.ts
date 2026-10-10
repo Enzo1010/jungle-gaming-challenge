@@ -17,7 +17,7 @@ export class Wallet {
   private constructor(
     public readonly id: string,
     public readonly playerId: string,
-    public readonly currency: string,
+     
     private _balance: Money,
     private _version: number,
     public readonly createdAt: Date,
@@ -30,7 +30,6 @@ export class Wallet {
     return new Wallet(
       props.id,
       props.playerId,
-      props.initialBalance.currency,
       props.initialBalance,
       1,
       now,
@@ -42,12 +41,15 @@ export class Wallet {
     return new Wallet(
       state.id,
       state.playerId,
-      state.currency,
       state.balance,
       state.version,
       state.createdAt,
       state.updatedAt,
     );
+  }
+
+  get currency(): string {
+    return this._balance.currency;
   }
 
   get balance(): Money {
@@ -73,7 +75,6 @@ export class Wallet {
     const balanceAfter = this._balance.subtract(money);
 
     this._balance = balanceAfter;
-    this._version += 1;
     this._updatedAt = new Date();
 
     return WalletLedgerEntry.create({
@@ -95,7 +96,6 @@ export class Wallet {
     const balanceAfter = this._balance.add(money);
 
     this._balance = balanceAfter;
-    this._version += 1;
     this._updatedAt = new Date();
 
     return WalletLedgerEntry.create({

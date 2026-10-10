@@ -42,3 +42,22 @@ export class MissingReferenceError extends DomainError {
     super(message);
   }
 }
+
+/** Tipo de transação interno (ex.: OPENING) ou desconhecido submetido por um canal externo (HTTP/SQS). */
+export class ForbiddenTransactionKindError extends DomainError {
+  constructor(kind: string) {
+    super(`Transaction kind ${kind} cannot be submitted externally`);
+  }
+}
+
+export class ReversalValidationError extends DomainError {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+export class ReversalNegativeBalanceError extends DomainError {
+  constructor(message: string) {
+    super(message);
+  }
+}

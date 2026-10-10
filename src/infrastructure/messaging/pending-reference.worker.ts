@@ -27,21 +27,21 @@ export class PendingReferenceWorker {
       await RequestContext.create(this.em, async () => {
         const em = this.em.fork({ clear: true });
 
-        // Retrieve transactions in PENDING_REFERENCE state using SKIP LOCKED
-        const rows: { id: string }[] = await em.getConnection().execute(
-          `SELECT id FROM wager_transactions 
-           WHERE status = 'PENDING_REFERENCE' 
-           FOR UPDATE SKIP LOCKED`
-        );
+        await em.transactional(async (tx) => {
+          // Retrieve transactions in PENDING_REFERENCE state using SKIP LOCKED inside transaction
+          const rows: { id: string }[] = await (tx as any).execute(
+            `SELECT id FROM wager_transactions 
+             WHERE status = 'PENDING_REFERENCE' 
+             FOR UPDATE SKIP LOCKED`
+          );
 
-        if (rows.length === 0) return;
+          if (rows.length === 0) return;
 
-        const now = new Date();
-        const ttlMs = 5 * 60 * 1000; // 5 minutes TTL
+          const now = new Date();
+          const ttlMs = 5 * 60 * 1000; // 5 minutes TTL
 
-        for (const row of rows) {
-          try {
-            await em.transactional(async (tx) => {
+          for (const row of rows) {
+            try {
               const transaction = await tx.findOneOrFail(WagerTransaction, { id: row.id });
               
               const refTx = await tx.findOne(WagerTransaction, { 
@@ -165,10 +165,8 @@ export class PendingReferenceWorker {
                   this.logger.warn(`Transaction ${transaction.id} rejected due to TTL (REFERENCE_NOT_FOUND)`);
                 }
               }
-            });
-          } catch (err) {
-            if (err instanceof InsufficientFundsError || err instanceof ReversalNegativeBalanceError || err instanceof ReversalValidationError) {
-              await em.transactional(async (tx) => {
+            } catch (err) {
+              if (err instanceof InsufficientFundsError || err instanceof ReversalNegativeBalanceError || err instanceof ReversalValidationError) {
                 const transaction = await tx.findOneOrFail(WagerTransaction, { id: row.id });
                 let code = 'UNKNOWN_VALIDATION_ERROR';
                 if (err instanceof InsufficientFundsError) code = 'INSUFFICIENT_FUNDS';
@@ -193,12 +191,12 @@ export class PendingReferenceWorker {
                 });
                 
                 tx.persist([transaction, OutboxMessage.enqueue(rejectedEvent)]);
-              });
-            } else {
-              this.logger.error(`Error processing pending reference ${row.id}: ${err}`);
+              } else {
+                this.logger.error(`Error processing pending reference ${row.id}: ${err}`);
+              }
             }
           }
-        }
+        });
       });
     } catch (e) {
       this.logger.error(`Error in PendingReferenceWorker: ${e}`);

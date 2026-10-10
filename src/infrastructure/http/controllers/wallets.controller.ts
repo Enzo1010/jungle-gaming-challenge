@@ -62,7 +62,7 @@ export class WalletsController {
     }
 
     // Refresh wallet to get the actual balance
-    const updatedWallet = await this.em.findOneOrFail(Wallet, { id });
+    const updatedWallet = await this.em.findOneOrFail(Wallet, { id }, { refresh: true });
 
     return {
        id: updatedWallet.id,

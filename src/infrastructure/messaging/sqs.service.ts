@@ -1,4 +1,4 @@
-import { SQSClient, SendMessageCommand, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs';
+import { SQSClient, SendMessageCommand, ReceiveMessageCommand, DeleteMessageCommand, ChangeMessageVisibilityCommand } from '@aws-sdk/client-sqs';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 @Injectable()
@@ -48,6 +48,16 @@ export class SqsService implements OnModuleInit, OnModuleDestroy {
     const command = new DeleteMessageCommand({
       QueueUrl: queueUrl,
       ReceiptHandle: receiptHandle,
+    });
+    return this.client.send(command);
+  }
+
+  async changeMessageVisibility(queueUrl: string, receiptHandle?: string, visibilityTimeout = 0) {
+    if (!receiptHandle) return;
+    const command = new ChangeMessageVisibilityCommand({
+      QueueUrl: queueUrl,
+      ReceiptHandle: receiptHandle,
+      VisibilityTimeout: visibilityTimeout,
     });
     return this.client.send(command);
   }

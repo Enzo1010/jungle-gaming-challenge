@@ -40,6 +40,11 @@ export class SqsConsumerWorker implements OnModuleInit, OnModuleDestroy {
       try {
         const messages = await this.sqsService.receiveMessages(this.queueUrl, 10, 20); // Long polling (20s)
         for (const message of messages) {
+          if (!this.isRunning) {
+            // Devolve imediatamente a mensagem à fila (Visibility = 0) e aborta o loop
+            await this.sqsService.changeMessageVisibility(this.queueUrl, message.ReceiptHandle, 0);
+            break;
+          }
           // Contexto MikroORM isolado por mensagem: Identity Map novo, descartado no fim (C3/C4).
           await RequestContext.create(this.em, () => this.processMessage(message));
         }
@@ -74,15 +79,8 @@ export class SqsConsumerWorker implements OnModuleInit, OnModuleDestroy {
     try {
       const money = Money.positive({ amount: payload.money?.amount, currency: payload.money?.currency });
       const payloadHash = PayloadHasher.generate({
-        providerId: payload.providerId,
-        externalTransactionId: payload.externalTransactionId,
-        playerId: payload.playerId,
-        walletId: payload.walletId,
-        roundId: payload.roundId,
-        gameId: payload.gameId,
-        kind: payload.kind,
+        ...payload,
         money,
-        referenceExternalTransactionId: payload.referenceExternalTransactionId,
       });
 
       const dto: ProcessWagerDto = {

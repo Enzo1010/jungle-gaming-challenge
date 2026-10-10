@@ -1,6 +1,5 @@
 import stringify from 'fast-json-stable-stringify';
 import * as crypto from 'node:crypto';
-import { Money } from '../../domain/value-objects/money.js';
 
 export interface BusinessKeys {
   providerId: string;
@@ -10,25 +9,26 @@ export interface BusinessKeys {
   roundId: string;
   gameId: string;
   kind: string;
-  money: Money;
+  money: any;
   referenceExternalTransactionId?: string;
+  [key: string]: any;
 }
 
 export class PayloadHasher {
-  static generate(payload: BusinessKeys): string {
-    const data = {
-      providerId: payload.providerId,
-      externalTransactionId: payload.externalTransactionId,
-      playerId: payload.playerId,
-      walletId: payload.walletId,
-      roundId: payload.roundId,
-      gameId: payload.gameId,
-      kind: payload.kind,
-      money: payload.money.toJSON(),
-      ...(payload.referenceExternalTransactionId ? { referenceExternalTransactionId: payload.referenceExternalTransactionId } : {}),
-    };
+  static generate(dto: BusinessKeys | Record<string, any>): string {
+    const clonedDto = { ...dto };
 
-    const hashString = stringify(data);
+    // Remove estritamente os metadados de transporte se existirem dentro do objeto
+    delete clonedDto.idempotencyKey;
+    delete clonedDto['idempotency-key'];
+    delete clonedDto.inbox;
+
+    if (clonedDto.money && typeof clonedDto.money.toJSON === 'function') {
+      clonedDto.money = clonedDto.money.toJSON();
+    }
+
+    const hashString = stringify(clonedDto);
     return crypto.createHash('sha256').update(hashString).digest('hex');
   }
 }
+

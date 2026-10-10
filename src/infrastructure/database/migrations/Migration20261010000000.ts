@@ -4,8 +4,8 @@ export class Migration20261010000000 extends Migration {
 
   async up(): Promise<void> {
     // Adiciona restrições no ledger para garantir integridade matemática e positividade (C11)
-    this.addSql('ALTER TABLE "wallet_ledger_entries" ADD CONSTRAINT "check_money_positive" CHECK ((money->>\'amount\')::numeric > 0);');
-    this.addSql('ALTER TABLE "wallet_ledger_entries" ADD CONSTRAINT "check_balance_after_positive" CHECK ((balance_after->>\'amount\')::numeric >= 0);');
+    this.addSql('ALTER TABLE "wallet_ledger_entries" ADD CONSTRAINT "check_money_positive" CHECK (money > 0);');
+    this.addSql('ALTER TABLE "wallet_ledger_entries" ADD CONSTRAINT "check_balance_after_positive" CHECK (balance_after >= 0);');
 
     // Torna a tabela wallet_ledger_entries verdadeiramente imutável através de um TRIGGER (C11)
     this.addSql(`

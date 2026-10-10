@@ -1,4 +1,4 @@
-import { EntityManager, OptimisticLockError, UniqueConstraintViolationException } from '@mikro-orm/core';
+import { EntityManager, OptimisticLockError, UniqueConstraintViolationException, DriverException } from '@mikro-orm/core';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Counter } from 'prom-client';
@@ -10,7 +10,7 @@ import { InboxMessage } from '../../domain/entities/inbox-message.js';
 import { WagerTransactionProcessedEvent } from '../../domain/events/wager-transaction-processed.event.js';
 import { WalletBalanceChangedEvent } from '../../domain/events/wallet-balance-changed.event.js';
 import { Money } from '../../domain/value-objects/money.js';
-import { ForbiddenTransactionKindError, InsufficientFundsError, ReversalValidationError, ReversalNegativeBalanceError, CurrencyMismatchError } from '../../domain/errors/domain.error.js';
+import { ForbiddenTransactionKindError, InsufficientFundsError, ReversalValidationError, ReversalNegativeBalanceError, CurrencyMismatchError, InvalidTransactionStateError } from '../../domain/errors/domain.error.js';
 import {
   IdempotencyConflictError,
   ConcurrencyConflictError,
@@ -287,6 +287,8 @@ export class ProcessWagerTransactionUseCase {
             throw new ConcurrencyConflictError(dto.walletId);
           }
           // Retry
+        } else if (error instanceof DriverException && (error.message?.includes('wallet_ledger_entries table is append-only') || error.message?.includes('strictly forbidden'))) {
+          throw new InvalidTransactionStateError('Ledger mutation is strictly forbidden');
         } else {
           throw error;
         }

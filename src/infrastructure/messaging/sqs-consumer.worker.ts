@@ -3,6 +3,7 @@ import { EntityManager, RequestContext } from '@mikro-orm/core';
 import { SqsService } from './sqs.service.js';
 import { ProcessWagerTransactionUseCase, ProcessWagerDto } from '../../application/use-cases/process-wager-transaction.use-case.js';
 import { ConcurrencyConflictError } from '../../application/errors/application.error.js';
+import { FatalSystemIntegrityError } from '../../application/errors/fatal-system-integrity.error.js';
 import { Money } from '../../domain/value-objects/money.js';
 import { PayloadHasher } from '../../application/utils/payload-hasher.js';
 
@@ -110,8 +111,10 @@ export class SqsConsumerWorker implements OnModuleInit, OnModuleDestroy {
       await this.sqsService.deleteMessage(this.queueUrl, sqsMessage.ReceiptHandle);
 
     } catch (error: any) {
-      // Erros de Infraestrutura (ConnectionException, timeout, concurrency) -> Nack
-      if (error instanceof ConcurrencyConflictError || error.name === 'ConnectionException' || error.name === 'DriverException') {
+      if (error instanceof FatalSystemIntegrityError) {
+        this.logger.error(`FATAL integrity error for message ${messageId}: ${error}. Nack.`);
+        // Don't delete, let visibility timeout handle it
+      } else if (error instanceof ConcurrencyConflictError || error.name === 'ConnectionException' || error.name === 'DriverException') {
         this.logger.warn(`Transient infra/concurrency error for message ${messageId}. Nack.`);
         // Don't delete, let visibility timeout handle it
       } else {

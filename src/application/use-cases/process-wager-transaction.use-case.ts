@@ -17,6 +17,7 @@ import {
   InboxMessageConflictError,
   WalletNotFoundError,
 } from '../errors/application.error.js';
+import { FatalSystemIntegrityError } from '../errors/fatal-system-integrity.error.js';
 import * as crypto from 'node:crypto';
 
 /**
@@ -288,7 +289,7 @@ export class ProcessWagerTransactionUseCase {
           }
           // Retry
         } else if (error instanceof DriverException && (error.message?.includes('wallet_ledger_entries table is append-only') || error.message?.includes('strictly forbidden'))) {
-          throw new InvalidTransactionStateError('Ledger mutation is strictly forbidden');
+          throw new FatalSystemIntegrityError('CRITICAL: Attempted to mutate immutable ledger. Transaction aborted by database trigger.');
         } else {
           throw error;
         }
